@@ -24,7 +24,7 @@ namespace MyMap
     /// </summary>
     public sealed partial class DiffPage : Page
     {
-        private int numOfPoint = 10000000;
+        private int numOfPoint = 100000;
         private int maxX = 10000;
         private int maxY = 10000;
         private int R = 100;
@@ -100,41 +100,22 @@ namespace MyMap
                 for (int i = 0; i < points.Length; i++)
                 {
                     PointX point = points[i];
-                    DateTime d1 = DateTime.Now;
-                    Px1 px = xs.Where(x => x.Value == point.X).FirstOrDefault();
-                    DateTime d2 = DateTime.Now;
-                    BuildLog("1", d1, d2);
-                    if (px == null)
-                    {
-                        px = new Px1(point.X);
-                        xs.Add(px);
-                        DateTime d3 = DateTime.Now;
-                        BuildLog("2", d2, d3);
-                    }
-                    px.Indexs.Add(i);
+                    Px1 px = new Px1(i, point.X);
+                    xs.Add(px);
 
-                    DateTime d4 = DateTime.Now;
                     Px1 py = ys.Where(x => x.Value == point.Y).FirstOrDefault();
-                    DateTime d5 = DateTime.Now;
-                    BuildLog("3", d4, d5);
-                    if (py == null)
-                    {
-                        py = new Px1(point.Y);
-                        ys.Add(py);
-                        DateTime d6 = DateTime.Now;
-                        BuildLog("4", d5, d6);
-                    }
-                    py.Indexs.Add(i);
+                    py = new Px1(i, point.Y);
+                    ys.Add(py);
                 }
             }
 
             int count = 0;
-            SortedSet<Px1> pxes = xs.GetViewBetween(new Px1(TargetPoint.X - R), new Px1(TargetPoint.X + R));
-            SortedSet<Px1> pyes = ys.GetViewBetween(new Px1(TargetPoint.Y - R), new Px1(TargetPoint.Y + R));
-            List<int> indexes = Intersect(pxes.ToArray(), pyes.ToArray());
-            foreach (var index in indexes)
+            SortedSet<Px1> pxes = xs.GetViewBetween(new Px1(0, TargetPoint.X - R), new Px1(points.Length, TargetPoint.X + R));
+            SortedSet<Px1> pyes = ys.GetViewBetween(new Px1(0, TargetPoint.Y - R), new Px1(points.Length, TargetPoint.Y + R));
+            var ps = pxes.Intersect(pyes, new Px1Comparer());
+            foreach (var p in ps)
             {
-                if (CheckDistance(TargetPoint, points[index]))
+                if (CheckDistance(TargetPoint, points[p.Index]))
                 {
                     count++;
                 }
@@ -143,20 +124,20 @@ namespace MyMap
             return count;
         }
 
-        private List<int> Intersect(Px1[] setX, Px1[] setY)
-        {
-            List<int> result = new List<int>();
-            for (int i = 0; i < setX.Length; i++)
-            {
-                Px1 px = setX[i];
-                for (int j = 0; j < setY.Length; j++)
-                {
-                    Px1 py = setY[j];
-                    result.AddRange(px.Indexs.Intersect(py.Indexs));
-                }
-            }
-            return result;
-        }
+        //private List<int> Intersect(Px1[] setX, Px1[] setY)
+        //{
+        //    List<int> result = new List<int>();
+        //    for (int i = 0; i < setX.Length; i++)
+        //    {
+        //        Px1 px = setX[i];
+        //        for (int j = 0; j < setY.Length; j++)
+        //        {
+        //            Px1 py = setY[j];
+        //            result.AddRange(px.Indexs.Intersect(py.Indexs));
+        //        }
+        //    }
+        //    return result;
+        //}
 
         private bool CheckDistance(PointX point1, PointX point2)
         {
@@ -178,18 +159,32 @@ namespace MyMap
 
     public class Px1 : IComparable<Px1>
     {
-        public SortedSet<int> Indexs { get; set; }
+        public int Index { get; set; }
         public int Value { get; set; }
 
-        public Px1(int value)
+        public Px1(int index, int value)
         {
-            Indexs = new SortedSet<int>();
+            Index = index;
             Value = value;
         }
 
         public int CompareTo(Px1 other)
         {
-            return Value.CompareTo(other.Value);
+            int value = Value.CompareTo(other.Value);
+            return value != 0 ? value : Index.CompareTo(other.Index);
+        }
+    }
+
+    public class Px1Comparer : IEqualityComparer<Px1>
+    {
+        public bool Equals(Px1 x, Px1 y)
+        {
+            return x.Index == y.Index;
+        }
+
+        public int GetHashCode(Px1 obj)
+        {
+            return obj.Index.GetHashCode();
         }
     }
 }
