@@ -24,7 +24,7 @@ namespace MyMap
     /// </summary>
     public sealed partial class MainPage : Page
     {
-        private int numOfPoint = 10000;
+        private int numOfPoint = 100000;
         private SortedSet<Px> xs = new SortedSet<Px>();
         private SortedSet<Px> ys = new SortedSet<Px>();
         private Ellipse[] points;

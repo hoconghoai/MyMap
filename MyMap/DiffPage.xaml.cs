@@ -24,7 +24,7 @@ namespace MyMap
     /// </summary>
     public sealed partial class DiffPage : Page
     {
-        private int numOfPoint = 100000;
+        private int numOfPoint = 1000000;
         private int maxX = 10000;
         private int maxY = 10000;
         private int R = 100;
@@ -45,30 +45,49 @@ namespace MyMap
             TargetPoint = new PointX(random.Next(maxX), random.Next(maxY));
             
             Task.Run(async () => {
-                DateTime start = DateTime.Now;
+                //DateTime start = DateTime.Now;
+                Stopwatch stopwatch = Stopwatch.StartNew();
                 int numOfPoint = Way1();
-                DateTime end = DateTime.Now;
+                stopwatch.Stop();
+                //DateTime end = DateTime.Now;
                 await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () => {
-                    txt1.Text = txt1.Text + "\r\n" + BuildResult(start, end, TargetPoint, numOfPoint);
+                    txt1.Text = txt1.Text + "\r\n" + BuildResult(stopwatch, TargetPoint, numOfPoint);
                 });
             });
 
             Task.Run(async () => {
-                DateTime start = DateTime.Now;
+                //DateTime start = DateTime.Now;
+                Stopwatch stopwatch = Stopwatch.StartNew();
                 int numOfPoint = Way2();
-                DateTime end = DateTime.Now;
+                stopwatch.Stop();
+                //DateTime end = DateTime.Now;
                 await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () => {
-                    txt2.Text = txt2.Text + "\r\n" + BuildResult(start, end, TargetPoint, numOfPoint);
+                    txt2.Text = txt2.Text + "\r\n" + BuildResult(stopwatch, TargetPoint, numOfPoint);
+                });
+            });
+
+            Task.Run(async () => {
+                Stopwatch stopwatch = Stopwatch.StartNew();
+                int numOfPoint = Way3();
+                stopwatch.Stop();
+                await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () => {
+                    txt3.Text = txt3.Text + "\r\n" + BuildResult(stopwatch, TargetPoint, numOfPoint);
                 });
             });
         }
 
-        private string BuildResult(DateTime start, DateTime end, PointX target, int numOfResult)
+        private string BuildResult(Stopwatch stopwatch, PointX target, int numOfResult)
         {
-            TimeSpan timeSpan = end - start;
-            return string.Format("X: {0}, Y: {1}; NumOfResult: {2}; Duration: {3}:{4}:{5}:{6}", target.X, target.Y, numOfResult, 
-                timeSpan.Hours, timeSpan.Minutes, timeSpan.Seconds, timeSpan.Milliseconds);
+            return string.Format("X: {0}, Y: {1}; NumOfResult: {2}; Duration: {3} ms", target.X, target.Y, numOfResult,
+                stopwatch.ElapsedMilliseconds);
         }
+
+        //private string BuildResult(DateTime start, DateTime end, PointX target, int numOfResult)
+        //{
+        //    TimeSpan timeSpan = end - start;
+        //    return string.Format("X: {0}, Y: {1}; NumOfResult: {2}; Duration: {3}:{4}:{5}:{6}", target.X, target.Y, numOfResult, 
+        //        timeSpan.Hours, timeSpan.Minutes, timeSpan.Seconds, timeSpan.Milliseconds);
+        //}
 
         private void BuildLog(string key, DateTime start, DateTime end)
         {
@@ -103,8 +122,7 @@ namespace MyMap
                     Px1 px = new Px1(i, point.X);
                     xs.Add(px);
 
-                    Px1 py = ys.Where(x => x.Value == point.Y).FirstOrDefault();
-                    py = new Px1(i, point.Y);
+                    Px1 py = new Px1(i, point.Y);
                     ys.Add(py);
                 }
             }
@@ -124,20 +142,51 @@ namespace MyMap
             return count;
         }
 
-        //private List<int> Intersect(Px1[] setX, Px1[] setY)
-        //{
-        //    List<int> result = new List<int>();
-        //    for (int i = 0; i < setX.Length; i++)
-        //    {
-        //        Px1 px = setX[i];
-        //        for (int j = 0; j < setY.Length; j++)
-        //        {
-        //            Px1 py = setY[j];
-        //            result.AddRange(px.Indexs.Intersect(py.Indexs));
-        //        }
-        //    }
-        //    return result;
-        //}
+        private SortedSet<Px1> xs3 = new SortedSet<Px1>();
+        private SortedSet<Px1> ys3 = new SortedSet<Px1>();
+        private int Way3()
+        {
+            if (xs3.Count == 0)
+            {
+                for (int i = 0; i < points.Length; i++)
+                {
+                    PointX point = points[i];
+                    Px1 px = new Px1(i, point.X);
+                    xs3.Add(px);
+
+                    Px1 py = new Px1(i, point.Y);
+                    ys3.Add(py);
+                }
+            }
+
+            int count = 0;
+            Dictionary<int, Px1> pxes = xs3.GetViewBetween(new Px1(0, TargetPoint.X - R), new Px1(points.Length, TargetPoint.X + R))
+                .ToDictionary(x => x.Index);
+            SortedSet<Px1> pyes = ys3.GetViewBetween(new Px1(0, TargetPoint.Y - R), new Px1(points.Length, TargetPoint.Y + R));
+            var ps = Intersect(pxes, pyes);
+            foreach (var p in ps)
+            {
+                if (CheckDistance(TargetPoint, points[p]))
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        private List<int> Intersect(Dictionary<int, Px1> pxes, SortedSet<Px1> pyes)
+        {
+            List<int> result = new List<int>();
+            foreach (var item in pyes)
+            {
+                if (pxes.ContainsKey(item.Index))
+                {
+                    result.Add(item.Index);
+                }
+            }
+            return result;
+        }
 
         private bool CheckDistance(PointX point1, PointX point2)
         {
