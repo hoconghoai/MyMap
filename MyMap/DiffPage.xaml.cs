@@ -55,16 +55,16 @@ namespace MyMap
                 });
             });
 
-            Task.Run(async () => {
-                //DateTime start = DateTime.Now;
-                Stopwatch stopwatch = Stopwatch.StartNew();
-                int numOfPoint = Way2();
-                stopwatch.Stop();
-                //DateTime end = DateTime.Now;
-                await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () => {
-                    txt2.Text = txt2.Text + "\r\n" + BuildResult(stopwatch, TargetPoint, numOfPoint);
-                });
-            });
+            //Task.Run(async () => {
+            //    //DateTime start = DateTime.Now;
+            //    Stopwatch stopwatch = Stopwatch.StartNew();
+            //    int numOfPoint = Way2();
+            //    stopwatch.Stop();
+            //    //DateTime end = DateTime.Now;
+            //    await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () => {
+            //        txt2.Text = txt2.Text + "\r\n" + BuildResult(stopwatch, TargetPoint, numOfPoint);
+            //    });
+            //});
 
             Task.Run(async () => {
                 Stopwatch stopwatch = Stopwatch.StartNew();
@@ -72,6 +72,17 @@ namespace MyMap
                 stopwatch.Stop();
                 await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () => {
                     txt3.Text = txt3.Text + "\r\n" + BuildResult(stopwatch, TargetPoint, numOfPoint);
+                });
+            });
+
+            Task.Run(async () => {
+                //DateTime start = DateTime.Now;
+                Stopwatch stopwatch = Stopwatch.StartNew();
+                int numOfPoint = Way4();
+                stopwatch.Stop();
+                //DateTime end = DateTime.Now;
+                await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () => {
+                    txt2.Text = txt2.Text + "\r\n" + BuildResult(stopwatch, TargetPoint, numOfPoint);
                 });
             });
         }
@@ -160,13 +171,76 @@ namespace MyMap
             }
 
             int count = 0;
+            Stopwatch stopwatch = Stopwatch.StartNew(); 
             Dictionary<int, Px1> pxes = xs3.GetViewBetween(new Px1(0, TargetPoint.X - R), new Px1(points.Length, TargetPoint.X + R))
                 .ToDictionary(x => x.Index);
+            stopwatch.Stop();
+            Debug.WriteLine(stopwatch.ElapsedMilliseconds);
+            stopwatch.Start();
             SortedSet<Px1> pyes = ys3.GetViewBetween(new Px1(0, TargetPoint.Y - R), new Px1(points.Length, TargetPoint.Y + R));
+            stopwatch.Stop();
+            Debug.WriteLine(stopwatch.ElapsedMilliseconds);
+            stopwatch.Start();
             var ps = Intersect(pxes, pyes);
+            stopwatch.Stop();
+            Debug.WriteLine(stopwatch.ElapsedMilliseconds);
+            stopwatch.Start();
             foreach (var p in ps)
             {
                 if (CheckDistance(TargetPoint, points[p]))
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        private Tape[] tapes;
+        private int Way4()
+        {
+            if (tapes == null || tapes.Length == 0)
+            {
+                int length = (int)Math.Ceiling(maxY / Tape.Size);
+                tapes = new Tape[length];
+                for (int i = 0; i < length; i++)
+                {
+                    tapes[i] = new Tape();
+                }
+
+                for (int i = 0; i < points.Length; i++)
+                {
+                    PointX point = points[i];
+                    point.SecID = i;
+                    tapes[(int)Math.Floor(point.X / Tape.Size)].Points.Add(point);
+                }
+            }
+            
+            Point left = new Point(TargetPoint.X - R, 0);
+            Point right = new Point(TargetPoint.X + R, 0);
+            int intLeft = Math.Max(0, (int)Math.Floor(left.X / Tape.Size));
+            int intRight = Math.Min(tapes.Length - 1, (int)Math.Floor(right.X / Tape.Size));
+
+            List<Tape> lstTapes = new List<Tape>();
+            for (int i = intLeft; i <= intRight; i++)
+            {
+                lstTapes.Add(tapes[i]);
+            }
+
+            List<PointX> lstPoints = new List<PointX>();
+            PointX top = new PointX(0, TargetPoint.Y - R);
+            top.SecID = 0;
+            PointX bottom = new PointX(0, TargetPoint.Y + R);
+            bottom.SecID = points.Length - 1;
+            foreach (Tape tape in lstTapes)
+            {
+                lstPoints.AddRange(tape.Points.GetViewBetween(top, bottom).ToList());
+            }
+
+            int count = 0;
+            foreach (var p in lstPoints)
+            {
+                if (CheckDistance(TargetPoint, p))
                 {
                     count++;
                 }
@@ -194,15 +268,22 @@ namespace MyMap
         }
     }
 
-    public class PointX
+    public class PointX : IComparable<PointX>
     {
         public int X { get; set; }
         public int Y { get; set; }
+        public int SecID { get; set; }
 
         public PointX(int x, int y)
         {
             X = x;
             Y = y;
+        }
+
+        public int CompareTo(PointX other)
+        {
+            int value = Y.CompareTo(other.Y);
+            return value != 0 ? value : SecID.CompareTo(other.SecID);
         }
     }
 
@@ -234,6 +315,17 @@ namespace MyMap
         public int GetHashCode(Px1 obj)
         {
             return obj.Index.GetHashCode();
+        }
+    }
+
+    public class Tape
+    {
+        public const double Size = 100;
+        public SortedSet<PointX> Points { get; set; }
+
+        public Tape()
+        {
+            Points = new SortedSet<PointX>();
         }
     }
 }
